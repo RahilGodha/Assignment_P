@@ -32,11 +32,17 @@ const SortableItem = ({ id, onDelete, index }) => {
       style={style}
       {...attributes}
       {...listeners}
-      className="cursor-move px-4 py-2 bg-blue-100 rounded hover:bg-blue-200 transition text-sm"
+      // className="cursor-move px-4 py-2 bg-blue-100 rounded hover:bg-blue-200 transition text-sm"
+      className="cursor-move px-5 py-2 bg-blue-100 rounded-xl hover:bg-blue-200 transition text-base font-medium shadow-sm"
     >
-      <div className="flex justify-between w-10">
+      <div className="flex justify-between items-center">
         <div>{id}</div>
-        <button onClick={() => onDelete(index)}>x</button>
+        <button
+          onClick={() => onDelete(index)}
+          className="ml-4 text-red-500 hover:text-red-700 font-bold"
+        >
+          x
+        </button>
       </div>
     </li>
   );
@@ -96,15 +102,18 @@ function App() {
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const [items, setItems] = useState([]);
   const [entries, setEntries] = useState(() => {
     const saved = localStorage.getItem("entries");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const savedOrder = useState(() => {
+    const saved = localStorage.getItem("menuOrder");
     return saved ? JSON.parse(saved) : [];
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log("Name:", name);
-    console.log("Text:", text);
 
     const newEntry = {
       name,
@@ -123,14 +132,23 @@ function App() {
     localStorage.setItem("entries", JSON.stringify(entries));
   }, [entries]);
 
+  useEffect(() => {
+    if (entries.length === 0) {
+      localStorage.removeItem("menuOrder");
+      setItems([]);
+    }
+  }, [entries]);
+
+  useEffect(() => {
+    localStorage.setItem("menuOrder", JSON.stringify(items));
+  }, [items]);
+
   const onDelete = (index) => {
     const updatedEntries = entries.filter((_, i) => i !== index);
     setEntries(updatedEntries);
   };
 
   const baseMenu = [];
-
-  const [items, setItems] = useState([]);
   useEffect(() => {
     let updated = [...baseMenu];
     if (entries.length > 0 && entries.length < 6) {
@@ -139,7 +157,16 @@ function App() {
       updated.push(...entries.slice(0, 5).map((entry) => entry.name));
       updated.push("Links");
     }
-    setItems(updated);
+
+    if (savedOrder[0]) {
+      const validOrder = savedOrder[0].filter((item) => updated.includes(item));
+      const remaining = updated.filter((item) => !validOrder.includes(item));
+
+      setItems([...validOrder, ...remaining]);
+    } else {
+      setItems(updated);
+    }
+    // setItems(updated);
   }, [entries]);
 
   const sensors = useSensors(
@@ -163,8 +190,12 @@ function App() {
   return (
     <div className="bg-amber-50 min-h-screen">
       {/* Navbar */}
-      <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
-        <div className="text-xl font-bold text-blue-600">MySite</div>
+      {/* <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
+        <div className="text-xl font-bold text-blue-600">MySite</div> */}
+      <nav className="bg-white shadow-lg px-8 py-4 flex justify-between items-center rounded-b-md">
+        <div className="text-2xl font-extrabold text-blue-700 tracking-tight">
+          MySite
+        </div>
 
         <DndContext
           sensors={sensors}
@@ -205,9 +236,9 @@ function App() {
       </nav>
 
       {/* Main Content */}
-      <main className="p-4">
-        <h1 className="text-3xl font-semibold">Hello, Rahil!</h1>
-        <p className="mt-2 text-gray-600">
+      <main className="p-6 max-w-4xl mx-auto">
+        <h1 className="text-4xl font-bold text-gray-900">Hello, Rahil!</h1>
+        <p className="mt-3 text-gray-600 text-lg">
           Welcome to your React + Tailwind app.
         </p>
 
@@ -215,37 +246,36 @@ function App() {
         {showForm && (
           <form
             onSubmit={handleSubmit}
-            className="mt-6 bg-white p-6 rounded-lg shadow-md w-full max-w-md"
+            className="mt-6 bg-white p-6 rounded-xl shadow-lg w-full max-w-md mx-auto space-y-4"
           >
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">
-              Add New Entry
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-800">Add New Entry</h2>
 
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-gray-700">
               Name
             </label>
+
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
 
-            <label className="block mb-2 text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-gray-700">
               Text
             </label>
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md mb-4"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
 
             <button
               type="submit"
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg w-full font-semibold"
             >
               Submit
             </button>
