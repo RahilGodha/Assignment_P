@@ -17,7 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-const SortableItem = ({ id }) => {
+const SortableItem = ({ id, onDelete, index }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id });
 
@@ -34,7 +34,59 @@ const SortableItem = ({ id }) => {
       {...listeners}
       className="cursor-move px-4 py-2 bg-blue-100 rounded hover:bg-blue-200 transition text-sm"
     >
-      {id}
+      <div className="flex justify-between w-10">
+        <div>{id}</div>
+        <button onClick={() => onDelete(index)}>x</button>
+      </div>
+    </li>
+  );
+};
+
+const SortableItemDropdown = ({
+  id,
+  showDropdown,
+  setShowDropdown,
+  entries,
+  onDelete,
+}) => {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="cursor-move px-4 py-2 bg-blue-100 rounded hover:bg-blue-200 transition text-sm"
+    >
+      {/* <li className="relative group cursor-pointer"> */}
+      <button
+        onClick={() => {
+          setShowDropdown(!showDropdown);
+        }}
+        className="hover:text-green-600 cursor-pointer"
+        aria-expanded={showDropdown}
+      >
+        Links ▼
+      </button>
+
+      {showDropdown && (
+        <ul className="absolute bg-white border mt-2 shadow-md rounded-md z-10 min-w-[150px]">
+          {entries.slice(5).map((entry, index) => (
+            <LinkComponent
+              key={index + 5}
+              index={index + 5}
+              entry={entry}
+              onDelete={onDelete}
+            />
+          ))}
+        </ul>
+      )}
     </li>
   );
 };
@@ -44,7 +96,6 @@ function App() {
   const [name, setName] = useState("");
   const [text, setText] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  // const [entries, setEntries] = useState([]);
   const [entries, setEntries] = useState(() => {
     const saved = localStorage.getItem("entries");
     return saved ? JSON.parse(saved) : [];
@@ -77,16 +128,20 @@ function App() {
     setEntries(updatedEntries);
   };
 
-  const defaultItems = ["Home", "About", "Contact", "Feedback"];
+  const baseMenu = [];
 
-  const dynamicItems =
-    entries.length > 1
-      ? ["Links"]
-      : entries.length === 1
-      ? [entries[0].name]
-      : [];
+  const [items, setItems] = useState([]);
+  useEffect(() => {
+    let updated = [...baseMenu];
+    if (entries.length > 0 && entries.length < 6) {
+      updated.push(...entries.map((entry) => entry.name));
+    } else if (entries.length >= 6) {
+      updated.push(...entries.slice(0, 5).map((entry) => entry.name));
+      updated.push("Links");
+    }
+    setItems(updated);
+  }, [entries]);
 
-  const [items, setItems] = useState([...defaultItems, ...dynamicItems]);
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
@@ -111,62 +166,35 @@ function App() {
       <nav className="bg-white shadow-md px-6 py-4 flex justify-between items-center">
         <div className="text-xl font-bold text-blue-600">MySite</div>
 
-        <ul className="flex gap-6 text-gray-700 font-medium">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={items}
-              strategy={verticalListSortingStrategy}
-            >
-              <ul className="flex gap-4">
-                {items.map((item) => (
-                  <SortableItem key={item} id={item} />
-                ))}
-              </ul>
-            </SortableContext>
-          </DndContext>
-          {/* <li className="hover:text-blue-500 cursor-pointer">Home</li>
-          <li className="hover:text-blue-500 cursor-pointer">About</li>
-          <li className="hover:text-blue-500 cursor-pointer">Contact</li>
-          <li className="hover:text-blue-500 cursor-pointer">Feedback</li> */}
-          {entries.length > 1 && (
-            <li className="relative group cursor-pointer">
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="hover:text-green-600 cursor-pointer"
-              >
-                Links ▼
-              </button>
-              {/* <span className="hover:text-green-600">Links ▼</span> */}
-              {showDropdown && (
-                <ul className="absolute bg-white border mt-2 shadow-md rounded-md z-10 min-w-[150px]">
-                  {entries.map((entry, index) => (
-                    <LinkComponent
-                      index={index}
-                      entry={entry}
-                      onDelete={onDelete}
-                    ></LinkComponent>
-                  ))}
-                </ul>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={items} strategy={verticalListSortingStrategy}>
+            <ul className="flex gap-6 text-gray-700 font-medium">
+              {items.map((item, index) =>
+                item === "Links" ? (
+                  <SortableItemDropdown
+                    key={item}
+                    id={item}
+                    showDropdown={showDropdown}
+                    setShowDropdown={setShowDropdown}
+                    entries={entries}
+                    onDelete={onDelete}
+                  />
+                ) : (
+                  <SortableItem
+                    key={item}
+                    id={item}
+                    index={index}
+                    onDelete={onDelete}
+                  />
+                )
               )}
-            </li>
-          )}
-          {entries.length === 1 && (
-            <li>
-              <a
-                href={entries[0].text}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hover:text-green-600"
-              >
-                {entries[0].name}
-              </a>
-            </li>
-          )}
-        </ul>
+            </ul>
+          </SortableContext>
+        </DndContext>
 
         <button
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
